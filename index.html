@@ -1558,7 +1558,7 @@ function applyFilters(){filtered=selectedKey?raw.filter(x=>String(x.patientKey||
       (lots||[]).find(r=>(!lot||norm(r.lote)===lot)&&(!cad||norm(r.caducidad||r.cad)===cad)&&(!bar||norm(r.codigo_barras||r.barcode)===bar))||null;
   };
   window.mxViewerShowTransfer=()=>{document.getElementById('pharmacyOrdersView')?.classList.add('mx-hidden');document.getElementById('tabPharmacyOrders')?.classList.remove('active');showTransfer();};
-  function showTransfer(){setTransferCartOpen(false,{focusSearch:false});updateFloatingCartButton();$('patientsView').classList.add('mx-hidden');$('inventoryView').classList.add('mx-hidden');$('pharmacyOrdersView')?.classList.add('mx-hidden');$('transferHistoryView')?.classList.add('mx-hidden');$('transferAdjustView')?.classList.add('mx-hidden');$('transferView').classList.remove('mx-hidden');$('tabPatients').classList.remove('active');$('tabInventory').classList.remove('active');$('tabPharmacyOrders')?.classList.remove('active');$('tabTransferHistory')?.classList.remove('active');$('tabTransferAdjust')?.classList.remove('active');$('tabTransfer').classList.add('active');updateFloatingCartButton();loadLots(false).catch(e=>{$('transferInventoryStatus').textContent='No se pudo consultar: '+e.message;$('transferResults').innerHTML='<div class="empty">Verifica que Macroxel esté abierto y haya sincronizado el CPM.</div>';});}
+  function showTransfer(){setTransferCartOpen(false,{focusSearch:false});updateFloatingCartButton();$('patientsView').classList.add('mx-hidden');$('inventoryView').classList.add('mx-hidden');$('pharmacyOrdersView')?.classList.add('mx-hidden');$('transferHistoryView')?.classList.add('mx-hidden');$('transferAdjustView')?.classList.add('mx-hidden');$('transferView').classList.remove('mx-hidden');$('tabPatients').classList.remove('active');$('tabInventory').classList.remove('active');$('tabPharmacyOrders')?.classList.remove('active');$('tabTransferHistory')?.classList.remove('active');$('tabTransferAdjust')?.classList.remove('active');$('tabTransfer').classList.add('active');updateFloatingCartButton();loadLots(true).catch(e=>{$('transferInventoryStatus').textContent='No se pudo consultar: '+e.message;$('transferResults').innerHTML='<div class="empty">Verifica que Macroxel esté abierto y haya sincronizado el CPM.</div>';});}
   function init(){
     const floatingCart=$('mxFloatingCartButton'),transferView=$('transferView');
     if(floatingCart)floatingCart.onclick=toggleTransferCart;
@@ -1723,13 +1723,13 @@ function boot(){apply(cached()||{});setTimeout(()=>apply(cached()||{}),500)}if(d
       }
     });
   }
-  async function show(){if(!await requireAccess())return;$('transferView').classList.add('mx-hidden');$('transferHistoryView')?.classList.add('mx-hidden');$('transferAdjustView')?.classList.add('mx-hidden');$('pharmacyOrdersView').classList.remove('mx-hidden');$('tabTransfer').classList.remove('active');$('tabTransferHistory')?.classList.remove('active');$('tabTransferAdjust')?.classList.remove('active');$('tabPharmacyOrders').classList.add('active');if(!loaded)await load(true);}
+  async function show(){if(!await requireAccess())return;$('transferView').classList.add('mx-hidden');$('transferHistoryView')?.classList.add('mx-hidden');$('transferAdjustView')?.classList.add('mx-hidden');$('pharmacyOrdersView').classList.remove('mx-hidden');$('tabTransfer').classList.remove('active');$('tabTransferHistory')?.classList.remove('active');$('tabTransferAdjust')?.classList.remove('active');$('tabPharmacyOrders').classList.add('active');await load(true);}
   async function addAll(){if(!await requireAccess())return;const list=filtered();if(!list.length)return;const b=$('btnPoAddAll');let added=0,errors=[];try{b.disabled=true;for(const r of list){try{const x=await window.mxViewerAddPharmacyOrderToCart(r);added+=num(x?.added);}catch(e){errors.push(`${r.clave}: ${e?.message||e}`);}}if(added>0)window.mxViewerShowTransfer?.();$('poStatus').textContent=errors.length?`Se agregaron ${added} pzs. ${errors.length} claves no pudieron agregarse.`:`Se agregaron ${added} pzs al carrito.`;}finally{b.disabled=false;}}
   function bind(){
     $('tabPharmacyOrders').onclick=show;$('btnPoReload').onclick=()=>load(true);$('poSearch').oninput=render;$('btnPoClearFilter').onclick=()=>{$('poSearch').value='';render();};$('btnPoAddAll').onclick=addAll;
     const tr=$('tabTransfer'),old=tr.onclick;tr.onclick=function(e){$('pharmacyOrdersView').classList.add('mx-hidden');$('transferHistoryView')?.classList.add('mx-hidden');$('transferAdjustView')?.classList.add('mx-hidden');$('tabPharmacyOrders').classList.remove('active');$('tabTransferHistory')?.classList.remove('active');$('tabTransferAdjust')?.classList.remove('active');return old?.call(this,e);};
     window.addEventListener('mx-viewer-config-changed',()=>{loaded=false;render();});window.addEventListener('mx-transfer-applied',()=>{loaded=false;load(true).catch(()=>{});});
-    timer=setInterval(()=>{if(!$('pharmacyOrdersView').classList.contains('mx-hidden'))load(false);},30000);
+    timer=0; // v1.0.00: sin recarga periódica; se actualiza únicamente al entrar al módulo.
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind,{once:true});else bind();
 })();
@@ -1811,20 +1811,8 @@ function boot(){apply(cached()||{});setTimeout(()=>apply(cached()||{}),500)}if(d
 (function(){
   'use strict';
   if(window.__mxViewerAutoRefreshV112)return;window.__mxViewerAutoRefreshV112=true;
-  let timer=0,lastRun=0,observer=null,lastBlocked=true;
-  const $=id=>document.getElementById(id);
-  function visible(el){if(!el||!el.isConnected)return false;for(let n=el;n&&n!==document.documentElement;n=n.parentElement){if(n.hidden)return false;const s=getComputedStyle(n);if(s.display==='none'||s.visibility==='hidden'||Number(s.opacity)===0)return false;}return true;}
-  function blocked(){if(window.__mxViewerLicensed===false)return true;const gates=['#loginGate','#activationGate','#mxViewerSalidaAuth','#mxViewerActivationGate','.gate:not(.hidden)'];return gates.some(sel=>[...document.querySelectorAll(sel)].some(visible));}
-  function buttonIds(){if($('tabTransfer'))return['btnInventoryReload','btnPoReload'];if($('patientReload'))return[];if($('refreshPatients'))return[];if($('btnReload'))return['btnReload','btnInventoryReload'];return[];}
-  function run(reason,force=false){clearTimeout(timer);timer=setTimeout(()=>{if(blocked())return;const now=Date.now();if(!force&&now-lastRun<2500)return;lastRun=now;window.dispatchEvent(new CustomEvent('mx-viewer-refresh-now',{detail:{reason,at:new Date().toISOString()}}));for(const id of buttonIds()){const b=$(id);if(b&&!b.disabled){try{b.click();}catch(_e){}}}},180);}
-  function schedule(reason,force=false){run(reason,force);}
-  function init(){lastBlocked=blocked();observer=new MutationObserver(()=>{const current=blocked();if(lastBlocked&&!current&&Date.now()-lastRun>4500)schedule('acceso-listo',true);lastBlocked=current;});observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style','hidden']});}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
-  window.addEventListener('mx-viewer-licensed',()=>{if(Date.now()-lastRun>4500)schedule('licencia-validada',true)});
-  window.addEventListener('online',()=>{if(Date.now()-lastRun>15000)schedule('conexion-restablecida')});
-  window.addEventListener('pageshow',()=>{if(Date.now()-lastRun>15000)schedule('apertura-pagina')});
-  window.addEventListener('focus',()=>{if(Date.now()-lastRun>30000)schedule('ventana-activa')});
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&Date.now()-lastRun>30000)schedule('visor-visible');});
+  /* Transferencias: desactivada la recarga global por foco/visibilidad/licencia.
+     Cada módulo actualiza al seleccionarse y las respuestas pendientes se sincronizan por evento. */
 })();
 </script>
 
@@ -2351,7 +2339,7 @@ async function syncHistory(){const a=loadPending();for(const p of a){const resp=
 function renderHistory(a=loadPending()){const tb=$('mxIcHistoryBody');if(!tb)return;const rows=[...a].sort((x,y)=>String(y.createdAt||'').localeCompare(String(x.createdAt||'')));tb.innerHTML=rows.length?rows.map(p=>{const st=txt(p.status||'pending').toLowerCase(),label=st==='applied'?'VALIDADO':st==='rejected'?'RECHAZADO':'PENDIENTE',can=st!=='applied';return`<tr><td>${esc(new Date(p.createdAt||Date.now()).toLocaleString('es-MX'))}</td><td><b>${esc(p.request?.inventoryModeLabel||MODES[p.mode]?.label||p.mode)}</b><small style="display:block;color:#64748b">${esc(p.id)}</small></td><td>${num(p.request?.totalProductos||p.totalProductos)}</td><td><span class="mx-ic-state ${st}">${label}</span>${p.response?.validatedBy?`<small style="display:block;color:#64748b;margin-top:3px">${esc(p.response.validatedBy)}</small>`:''}</td><td><div style="display:flex;gap:5px;flex-wrap:wrap">${can?`<button type="button" class="mx-resend-btn" data-ic-resend="${esc(p.id)}">🔁 Reenviar</button>`:''}<button type="button" class="btn-secondary" data-ic-status="${esc(p.id)}">Actualizar</button></div></td></tr>`}).join(''):'<tr><td colspan="5" class="empty">Aún no has enviado inventarios desde este dispositivo.</td></tr>';tb.querySelectorAll('[data-ic-resend]').forEach(b=>b.onclick=()=>resend(b.dataset.icResend));tb.querySelectorAll('[data-ic-status]').forEach(b=>b.onclick=()=>syncHistory())}
 function build(){const v=$('transferAdjustView');if(!v)return;v.innerHTML=`<div class="card mx-ic-card"><div class="mx-ic-head"><div><h3>⚙️ Ajustar inventario físico</h3><p>Consulta el inventario publicado por el Sistema Principal, captura únicamente las cantidades que verificaste físicamente y envíalas a validación. <b>Ninguna existencia cambia hasta que un usuario con permiso “Validar inventario” la apruebe en el Sistema Principal.</b></p></div><button id="mxIcReload" type="button" class="btn-secondary">🔄 Actualizar inventario</button></div><div class="mx-ic-modebar">${Object.entries(MODES).map(([k,m])=>`<button type="button" class="mx-ic-mode ${k===state.mode?'active':''}" data-ic-mode="${k}">${m.icon} ${m.label}</button>`).join('')}</div><div class="mx-ic-toolbar"><div class="mx-ic-search"><label>Buscar producto</label><input id="mxIcSearch" autocomplete="off" placeholder="Clave, nombre, lote, código de barras o ubicación"></div><button id="mxIcClearChanges" class="btn-secondary" type="button">↶ Deshacer cambios</button><button id="mxIcSyncStatus" class="btn-secondary" type="button">↻ Estado solicitudes</button></div><div class="mx-ic-kpis"><div class="mx-ic-kpi"><small>Registros del módulo</small><b id="mxIcKRows">0</b></div><div class="mx-ic-kpi"><small>Piezas actuales</small><b id="mxIcKPieces">0</b></div><div class="mx-ic-kpi"><small>Registros ajustados</small><b id="mxIcKChanged">0</b></div><div class="mx-ic-kpi"><small>Inventario</small><b id="mxIcKMode">—</b></div></div><div id="mxIcStatus" class="mx-ic-status">El inventario se consulta automáticamente al entrar a este módulo.</div><div class="mx-ic-tablewrap"><table class="mx-ic-table"><thead><tr><th>#</th><th>Producto</th><th>Lote / caducidad</th><th>Almacén</th><th>Estantes</th><th>Total</th></tr></thead><tbody id="mxIcBody"><tr><td colspan="6" class="empty">Sin consultar.</td></tr></tbody></table></div><div class="mx-ic-pagebar"><button id="mxIcPrev" class="btn-secondary" type="button">‹ Anterior</button><span id="mxIcPageText">0 registros</span><button id="mxIcNext" class="btn-secondary" type="button">Siguiente ›</button></div><div class="mx-ic-footer"><div class="mx-ic-reason"><label>Motivo / referencia del inventario</label><textarea id="mxIcReason" rows="2" placeholder="Ej. Conteo físico turno matutino / revisión semanal"></textarea></div><div class="mx-ic-actions"><button id="mxIcFinalize" class="mx-ic-primary" type="button">✅ Finalizar inventario y enviar a validación</button></div></div><div class="mx-ic-history"><div class="mx-ic-history-head"><h4>Historial de inventarios enviados</h4><button id="mxIcHistoryRefresh" class="btn-secondary" type="button">Actualizar estado</button></div><div class="table-wrap" style="margin-top:8px"><table><thead><tr><th>Fecha</th><th>Inventario / solicitud</th><th>Claves</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="mxIcHistoryBody"><tr><td colspan="5" class="empty">Sin solicitudes.</td></tr></tbody></table></div></div></div>`;
  document.querySelectorAll('[data-ic-mode]').forEach(b=>b.onclick=()=>{state.mode=b.dataset.icMode;state.page=1;state.changed.clear();render();status(`${modeLabel()}: captura solo las cantidades verificadas. Los productos no modificados no se tocarán.`)});$('mxIcSearch').addEventListener('input',()=>{state.page=1;renderTable()});$('mxIcReload').onclick=()=>loadSnapshot(true);$('mxIcClearChanges').onclick=()=>{if(!state.changed.size||confirm('¿Deshacer todos los cambios capturados que aún no has enviado?')){state.changed.clear();render();status('Cambios locales descartados. El inventario del Sistema Principal no fue modificado.')}};$('mxIcFinalize').onclick=finalize;$('mxIcHistoryRefresh').onclick=$('mxIcSyncStatus').onclick=syncHistory;$('mxIcPrev').onclick=()=>{if(state.page>1){state.page--;renderTable()}};$('mxIcNext').onclick=()=>{const pages=Math.ceil(currentRows().length/PAGE_SIZE)||1;if(state.page<pages){state.page++;renderTable()}};renderKpis();renderHistory();}
-function show(){for(const id of ['transferView','pharmacyOrdersView','transferHistoryView','patientsView','inventoryView'])$(id)?.classList.add('mx-hidden');$('transferAdjustView')?.classList.remove('mx-hidden');for(const id of ['tabTransfer','tabPharmacyOrders','tabTransferHistory','tabPatients','tabInventory'])$(id)?.classList.remove('active');$('tabTransferAdjust')?.classList.add('active');if(!state.rows.length)loadSnapshot(true);else{render();syncHistory()}}
+function show(){for(const id of ['transferView','pharmacyOrdersView','transferHistoryView','patientsView','inventoryView'])$(id)?.classList.add('mx-hidden');$('transferAdjustView')?.classList.remove('mx-hidden');for(const id of ['tabTransfer','tabPharmacyOrders','tabTransferHistory','tabPatients','tabInventory'])$(id)?.classList.remove('active');$('tabTransferAdjust')?.classList.add('active');if(!state.changed.size)loadSnapshot(true);else{render();syncHistory();status('Conservando cambios capturados. El inventario no se recargará hasta enviarlos o descartarlos.')}}
 function init(){build();const tab=$('tabTransferAdjust');if(tab)tab.onclick=show;window.mxOpenInventoryCountModule=show;setInterval(()=>{if(!$('transferAdjustView')?.classList.contains('mx-hidden')&&!document.hidden)syncHistory().catch(()=>{})},20000)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
@@ -2394,15 +2382,8 @@ button[data-ic-status]{display:none!important}
 <script id="mx-auto-refresh-connectivity-v1029">
 (function(){
 'use strict';if(window.__mxAutoRefreshConnectivityV1029)return;window.__mxAutoRefreshConnectivityV1029=true;
-const REFRESH_IDS=["btnReload", "btnInventoryReload", "btnRefreshTransferAdjust", "btnPoReload", "mxIcReload", "mxIcHistoryRefresh", "mxNetRefresh", "vlaRefresh", "refreshBtn", "refreshHistory", "refreshConsumption", "refreshJustifiedValidation", "reload"];let lastAuto=0,probeBusy=false,lastProbe=0;
-function tagRefresh(root=document){
-  for(const id of REFRESH_IDS){const b=document.getElementById(id);if(b)b.dataset.mxManualRefresh='1'}
-  root.querySelectorAll?.('button').forEach(b=>{const t=((b.textContent||'')+' '+(b.getAttribute('aria-label')||'')+' '+(b.title||'')).trim();if(/^(?:🔄\s*)?(?:Actualizar|Recargar)(?:\b|\s)/i.test(t))b.dataset.mxManualRefresh='1'});
-}
-function clickRefresh(force=false){
-  const now=Date.now();if(!force&&now-lastAuto<1600)return;lastAuto=now;tagRefresh();
-  REFRESH_IDS.forEach((id,i)=>{const b=document.getElementById(id);if(!b||b.disabled)return;setTimeout(()=>{try{b.click()}catch(_e){}},80+i*70)});
-}
+/* Transferencias v1.0.00: el semáforo se comprueba en segundo plano, pero los módulos NO se recargan ni cambian de vista mientras el usuario trabaja. Cada módulo consulta datos al entrar. */
+let probeBusy=false,lastProbe=0;
 function cleanDb(v){return String(v||'').trim().replace(/\.json\/?$/i,'').replace(/\/+$/,'')}
 function db(){try{const c=window.mxViewerGetCfg?.()||{};return cleanDb(c.db||c.firebaseUrl||c.currentUrl||c.url)}catch(_e){return''}}
 function apply(ok,detail=''){
@@ -2424,11 +2405,11 @@ async function probe(force=false){
   }catch(e){apply(false,String(e?.message||e))}finally{probeBusy=false}
 }
 function boot(){
-  tagRefresh();setTimeout(()=>clickRefresh(true),550);setTimeout(()=>clickRefresh(true),1500);setTimeout(()=>probe(true),350);setTimeout(()=>probe(true),1800);
-  const mo=new MutationObserver(m=>{tagRefresh();for(const x of m){for(const n of x.addedNodes||[]){if(n?.nodeType===1){const ids=REFRESH_IDS.filter(id=>n.id===id||n.querySelector?.('#'+id));if(ids.length)setTimeout(()=>clickRefresh(true),180)}}}});mo.observe(document.documentElement,{subtree:true,childList:true});
-  window.addEventListener('online',()=>{setTimeout(()=>{clickRefresh(true);probe(true)},250)});window.addEventListener('offline',()=>apply(false,'Sin red'));
-  window.addEventListener('focus',()=>{clickRefresh();probe(true)});document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){clickRefresh();probe(true)}});
-  document.addEventListener('click',e=>{if(e.target.closest?.('.mx-acc-head,[data-view],[data-tab],.tab,.nav button'))setTimeout(()=>clickRefresh(),180)},true);
+  setTimeout(()=>probe(true),350);
+  window.addEventListener('online',()=>setTimeout(()=>probe(true),250));
+  window.addEventListener('offline',()=>apply(false,'Sin red'));
+  window.addEventListener('focus',()=>probe(true));
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')probe(true)});
   setInterval(()=>probe(false),8000);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
