@@ -614,6 +614,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 <style>
 
 /* MACROXEL v1.0.00 · Control universal de nombres/descripciones largas */
+.panel.hidden.mx-longtext-expanded,.hidden.mx-longtext-expanded{display:none!important}
 .mx-longtext-collapsed{
   overflow-wrap:anywhere!important;
   word-break:normal!important;
@@ -1835,6 +1836,64 @@ function boot(){apply(cached()||{});setTimeout(()=>apply(cached()||{}),500)}if(d
 .mx-connection-gate-info b{color:#0b4f7d}
 @media(max-width:600px){#mxEcosystemLiveId{left:8px;right:8px;max-width:none;font-size:8px}.mx-connection-gate-info{font-size:9px;padding:7px 8px}}
 </style>
+
+<style id="mx-fixed-principal-binding-v100-style">
+#mxPrincipalBindingGate{position:fixed;inset:0;z-index:1900;background:rgba(5,24,42,.82);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px}
+#mxPrincipalBindingGate .mx-pb-card{width:min(760px,100%);max-height:88vh;overflow:auto;background:#fff;border-radius:20px;box-shadow:0 30px 90px rgba(0,0,0,.45);padding:18px}
+#mxPrincipalBindingGate h2{margin:0;color:#103f66;font-size:21px}#mxPrincipalBindingGate p{color:#64748b;font-size:12px;line-height:1.45}
+#mxPrincipalBindingGate .mx-pb-list{display:grid;gap:9px;margin-top:12px}.mx-pb-system{border:1px solid #cfe0ee;border-radius:14px;padding:12px;background:#f8fbfe;cursor:pointer;text-align:left;color:#17324b}
+.mx-pb-system:hover{border-color:#4f7ee8;box-shadow:0 7px 20px rgba(37,99,235,.12)}.mx-pb-system b{display:block;color:#103f66;font-size:14px}.mx-pb-system small{display:block;margin-top:4px;color:#64748b;overflow-wrap:anywhere}
+.mx-pb-current{display:inline-block;margin-top:7px;padding:4px 8px;border-radius:999px;background:#e0f2fe;color:#075985;font-size:10px;font-weight:900}
+</style>
+<script id="mx-fixed-principal-binding-v100">
+(function(){
+'use strict';if(window.__mxFixedPrincipalBindingV100)return;window.__mxFixedPrincipalBindingV100=true;
+const CONTROL_DB='https://ecosistema-macroxel-default-rtdb.firebaseio.com',KEY='mx_principal_binding_v1',LEGACY='HGAM',ONLINE_MS=95000;
+const txt=v=>String(v==null?'':v).trim(),cleanDb=v=>txt(v).replace(/\.json\/?$/i,'').replace(/\/+$/,''),cleanId=v=>(txt(v)||'').toUpperCase().replace(/[.#$\[\]\/]/g,'_');
+let choosing=null,resolving=false,lastResolve=0;
+function currentCfg(){try{const c=window.mxViewerGetCfg?.()||{};return{db:cleanDb(c.db||c.firebaseUrl||c.currentUrl||c.url),branch:cleanId(c.branch||c.unitId||c.activationId||c.storeId),unitName:txt(c.unitName||c.unidad||c.principalName)}}catch(_e){return{db:'',branch:'',unitName:''}}}
+function readBinding(){try{const b=JSON.parse(localStorage.getItem(KEY)||'null');if(!b||!cleanId(b.systemId||b.branch))return null;return{...b,systemId:cleanId(b.systemId||b.branch),branch:cleanId(b.systemId||b.branch),db:cleanDb(b.db||b.firebaseUrl),unitName:txt(b.unitName)}}catch(_e){return null}}
+function saveBinding(rec,source='SELECCION_USUARIO'){
+ const id=cleanId(rec?.unitId||rec?.activationId||rec?.storeId||rec?.branch||rec?.systemId),db=cleanDb(rec?.firebaseUrl||rec?.currentUrl||rec?.db||rec?.url),unitName=txt(rec?.unitName||rec?.unidad||rec?.principalName||rec?.seatLabel||'');if(!id||!db)return null;
+ const old=readBinding(),next={schemaVersion:1,mode:'FIXED_SYSTEM_ID',systemId:id,branch:id,db,firebaseUrl:db,unitName,boundAt:old?.boundAt||new Date().toISOString(),updatedAt:new Date().toISOString(),source};
+ try{localStorage.setItem(KEY,JSON.stringify(next));localStorage.setItem('mx_ecosystem_connection_v3',JSON.stringify({...next,unitId:id,activationId:id,currentUrl:db,principalName:unitName}));}catch(_e){}
+ const c=currentCfg();if(c.db!==db||c.branch!==id||txt(c.unitName)!==unitName){try{window.mxViewerSaveCfg?.({db,branch:id,unitName},false)}catch(_e){};try{window.dispatchEvent(new CustomEvent('mx-viewer-config-changed',{detail:{previous:c,next:{db,branch:id,unitName},fixedBinding:true,source}}))}catch(_e){}}
+ return next;
+}
+function rest(db,path){const b=cleanDb(db);if(!b)return'';const p=String(path||'').startsWith('/')?String(path):'/'+String(path||'');return b+p+(p.endsWith('.json')?'':'.json')}
+async function get(db,path,timeout=6000){const u=rest(db,path);if(!u)return null;const c=new AbortController(),tm=setTimeout(()=>c.abort(),timeout);try{const r=await fetch(u+(u.includes('?')?'&':'?')+'mx='+Date.now(),{cache:'no-store',signal:c.signal});if(!r.ok)return null;return await r.json().catch(()=>null)}catch(_e){return null}finally{clearTimeout(tm)}}
+function record(rec){if(!rec||typeof rec!=='object')return null;const id=cleanId(rec.unitId||rec.activationId||rec.storeId||rec.branch),db=cleanDb(rec.firebaseUrl||rec.currentUrl||rec.db||rec.url);return id&&db?{...rec,systemId:id,branch:id,db,firebaseUrl:db,unitName:txt(rec.unitName||rec.unidad||rec.principalName||rec.seatLabel||'')}:null}
+async function systems(){
+ const [raw,pres]=await Promise.all([get(CONTROL_DB,'/ecosystem_connection'),get(CONTROL_DB,'/inventory_heartbeat/principal_presence')]);const map=new Map();
+ for(const [key,val] of Object.entries(raw||{})){if(['latest','device_control','device_meta','control_audit','activation_requests'].includes(String(key)))continue;const r=record(val);if(!r)continue;const prev=map.get(r.systemId),t=Date.parse(r.updatedAt||r.publishedAt||0)||0,pt=Date.parse(prev?.updatedAt||prev?.publishedAt||0)||0;if(!prev||t>=pt)map.set(r.systemId,r)}
+ const now=Date.now();for(const p of Object.values(pres||{})){const id=cleanId(p?.branch||p?.unitId);if(!id)continue;const last=Number(p?.lastSeenMs)||Date.parse(p?.lastSeenAt||0)||0,r=map.get(id);if(r)map.set(id,{...r,online:!!last&&now-last<ONLINE_MS&&p?.connectionPaused!==true,lastSeenAt:p?.lastSeenAt||'',lastSeenMs:last});}
+ return [...map.values()].sort((a,b)=>txt(a.unitName||a.systemId).localeCompare(txt(b.unitName||b.systemId),'es'));
+}
+function choose(list){if(choosing)return choosing;choosing=new Promise(resolve=>{const current=currentCfg(),gate=document.createElement('div');gate.id='mxPrincipalBindingGate';gate.innerHTML='<div class="mx-pb-card"><h2>Selecciona el Sistema Principal de este visor</h2><p>Esta selección se guarda en este dispositivo. Después de vincularlo, este visor <b>no cambiará a otra instalación</b> aunque otro Sistema Principal esté encendido.</p><div class="mx-pb-list"></div></div>';const host=gate.querySelector('.mx-pb-list');host.innerHTML=list.map((r,i)=>`<button type="button" class="mx-pb-system" data-i="${i}"><b>${String(r.unitName||r.systemId).replace(/[&<>]/g,'')}</b><small>ID: ${r.systemId}</small>${current.branch===r.systemId?'<span class="mx-pb-current">Configuración actual</span>':''}</button>`).join('');host.onclick=e=>{const b=e.target.closest('.mx-pb-system');if(!b)return;const r=list[Number(b.dataset.i)];const saved=saveBinding(r,'SELECCION_USUARIO');gate.remove();choosing=null;resolve(saved)};document.body.appendChild(gate)});return choosing}
+async function ensure(){
+ let b=readBinding();if(b)return resolveExact(b);
+ if(navigator.onLine===false){const c=currentCfg();if(c.db&&c.branch&&c.branch!==LEGACY)return saveBinding({firebaseUrl:c.db,unitId:c.branch,unitName:c.unitName},'MIGRACION_LOCAL_OFFLINE');return null}
+ const list=await systems();if(list.length===1)return saveBinding(list[0],'UNICO_SISTEMA_DETECTADO');if(list.length>1)return choose(list);
+ const c=currentCfg();if(c.db&&c.branch&&c.branch!==LEGACY)return saveBinding({firebaseUrl:c.db,unitId:c.branch,unitName:c.unitName},'MIGRACION_CONFIG_EXISTENTE');return null;
+}
+async function resolveExact(binding=readBinding()){
+ if(!binding)return null;const id=cleanId(binding.systemId||binding.branch);if(!id)return null;
+ const exact=record(await get(CONTROL_DB,'/ecosystem_connection/'+encodeURIComponent(id)));if(exact&&exact.systemId===id)return saveBinding(exact,'ACTUALIZACION_MISMO_SISTEMA');
+ return binding;
+}
+async function resolve(force=false){if(resolving)return readBinding();const now=Date.now();if(!force&&now-lastResolve<8000)return readBinding()||ensure();resolving=true;lastResolve=now;try{return await ensure()}finally{resolving=false}}
+async function resolveForActivation(fallback={}){const b=await resolve(true);if(b)return{branch:b.systemId,db:b.db,unitName:b.unitName};return{branch:cleanId(fallback.branch||fallback.unitId||LEGACY)||LEGACY,db:cleanDb(fallback.db||fallback.firebaseUrl),unitName:txt(fallback.unitName)}}
+async function connectionState(){
+ const b=await resolve(false);if(!b||navigator.onLine===false)return{connected:false,principalOnline:false,firebase:false,reason:'Sin vínculo o sin Internet'};
+ const [probe,pres]=await Promise.all([get(b.db,'/ecosystem_connection/'+encodeURIComponent(b.systemId),5000),get(CONTROL_DB,'/inventory_heartbeat/principal_presence',5000)]);const firebase=!!record(probe);let online=false,last=0,paused=false;
+ for(const p of Object.values(pres||{})){if(cleanId(p?.branch||p?.unitId)!==b.systemId)continue;const t=Number(p?.lastSeenMs)||Date.parse(p?.lastSeenAt||0)||0;if(t>last){last=t;paused=p?.connectionPaused===true;online=!!t&&Date.now()-t<ONLINE_MS&&!paused}}
+ return{connected:firebase&&online,firebase,principalOnline:online,paused,systemId:b.systemId,db:b.db,unitName:b.unitName,lastSeenMs:last,reason:!firebase?'Firebase no disponible':!online?'Sistema Principal sin señal':'Conectado'};
+}
+window.mxFixedPrincipalBinding={key:KEY,current:readBinding,currentId:()=>readBinding()?.systemId||'',systems,ensure,resolve,resolveExact,resolveForActivation,connectionState,bind:saveBinding};
+const boot=()=>{setTimeout(()=>resolve(true),350);setInterval(()=>resolve(false),30000);window.addEventListener('online',()=>setTimeout(()=>resolve(true),250));window.addEventListener('focus',()=>resolve(false))};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+})();
+</script>
+
 <script id="mx-activation-delivery-v1021">
 (function(){'use strict';if(window.__mxActivationDeliveryV1021)return;window.__mxActivationDeliveryV1021=true;
 const CONTROL_DB='https://ecosistema-macroxel-default-rtdb.firebaseio.com',APP_CODE="MACROXEL_TRANSFERENCIAS",VERSION='1.0.00',PENDING_KEY='mx_activation_delivery_pending_v1021';
@@ -1848,7 +1907,7 @@ function field(ids){for(const id of ids){const e=document.getElementById(id);con
 function statusHost(){for(const id of ['activationMsg','actMsg','mxVaState','mxVaMsg','activationState']){const e=document.getElementById(id);if(e)return e}return null}
 function controlUrl(path){return CONTROL_DB+'/'+String(path||'').replace(/^\/+/, '')+'.json'}
 async function controlGet(path){const r=await priorFetch(controlUrl(path)+'?ts='+Date.now(),{cache:'no-store'});if(!r.ok)return null;return r.json().catch(()=>null)}
-async function discover(){const c=cfg(),rec=await controlGet('ecosystem_connection/latest').catch(()=>null);if(rec){return{branch:txt(rec?.unitId||rec?.activationId||rec?.branch||c.branch||'HGAM').toUpperCase(),db:cleanDb(rec?.firebaseUrl||rec?.currentUrl||rec?.db||rec?.url||c.db),unitName:txt(rec?.unitName||rec?.unidad||rec?.principalName)}}return{branch:txt(c.branch||'HGAM').toUpperCase(),db:cleanDb(c.db),unitName:''}}
+async function discover(){const c=cfg();if(window.mxFixedPrincipalBinding?.resolveForActivation)return await window.mxFixedPrincipalBinding.resolveForActivation(c);return{branch:txt(c.branch||'HGAM').toUpperCase(),db:cleanDb(c.db),unitName:''}}
 function pendingRecord(r){if(!r||typeof r!=='object')return false;const st=txt(r.status||r.estado).toLowerCase(),rt=txt(r.requestType).toLowerCase();if(/pending|pendiente|espera/.test(st)||/activation|additional_application|hard_reset_new_request/.test(rt)||txt(r.pendingAppCode))return true;return Object.values(r.applications||{}).some(a=>/pending|pendiente|espera/.test(txt(a?.status).toLowerCase())||a?.active===false)}
 async function relay(record,branchArg='',deviceArg='',reason='mirror'){if(!pendingRecord(record))return false;const d=txt(deviceArg||record.deviceKey||record.deviceId||dev()),disc=await discover(),br=txt(branchArg||disc.branch||record.branch||'HGAM').toUpperCase()||'HGAM',dk=safe(record.deviceKey||d);if(!dk)return false;const now=new Date().toISOString(),payload={status:'pending',relayVersion:2,branch:br,deviceKey:dk,deviceId:txt(record.deviceId||d),appCode:APP_CODE,viewerVersion:VERSION,githubUrl:viewerUrl(),pageHost:String(location.host||''),pagePath:String(location.pathname||''),reason,requestedAt:txt(record.lastRequestAt||record.requestedAt||now),updatedAt:now,record:{...record,branch:br,appCode:record.appCode||APP_CODE,version:record.version||VERSION,viewerUrl:viewerUrl(),githubUrl:viewerUrl(),sourceGithubUrl:viewerUrl()}};const r=await priorFetch(controlUrl('ecosystem_connection/activation_requests/'+encodeURIComponent(br)+'/'+encodeURIComponent(dk)),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),cache:'no-store'});if(!r.ok)throw new Error('Canal de activación HTTP '+r.status);try{localStorage.setItem(PENDING_KEY,String(Date.now()))}catch(_e){}return true}
 function parseBody(v){try{return typeof v==='string'?JSON.parse(v):v&&typeof v==='object'?v:null}catch(_e){return null}}
@@ -1884,12 +1943,8 @@ window.addEventListener('mx-viewer-licensed',()=>{try{localStorage.removeItem(PE
  }
  function connectionStamp(r){const t=new Date(r?.updatedAt||r?.publishedAt||r?.createdAt||0).getTime();return Number.isFinite(t)?t:0;}
  async function locate(current){
-   const dbs=[...new Set([cleanDb(current.db),...DISCOVERY_DBS].filter(Boolean))],ids=[...new Set([cleanId(current.branch),LEGACY])],candidates=[];
-   for(const db of dbs){
-     const latest=await read(db,'/ecosystem_connection/latest').catch(()=>null);if(connectionFrom(latest))candidates.push(latest);
-     for(const id of ids){const direct=await read(db,`/ecosystem_connection/${encodeURIComponent(id)}`).catch(()=>null);if(connectionFrom(direct))candidates.push(direct);const heartbeat=await read(db,`/inventory_heartbeat/${encodeURIComponent(id)}/ecosystemConnection`).catch(()=>null);if(connectionFrom(heartbeat))candidates.push(heartbeat);}
-   }
-   return candidates.sort((a,b)=>connectionStamp(b)-connectionStamp(a))[0]||null;
+   if(window.mxFixedPrincipalBinding?.resolve){const b=await window.mxFixedPrincipalBinding.resolve(true);if(b)return{firebaseUrl:b.db,currentUrl:b.db,db:b.db,url:b.db,unitId:b.systemId,activationId:b.systemId,branch:b.systemId,unitName:b.unitName,updatedAt:b.updatedAt||new Date().toISOString()};}
+   return null;
  }
  async function check(force=false){
    if(checking)return false;const current=cfg();render();if(navigator.onLine===false)return false;checking=true;
@@ -2364,11 +2419,9 @@ async function probe(force=false){
   if(navigator.onLine===false||window.mxMaintenancePaused?.()===true){apply(false,'Sin red o conexión pausada');return}
   const base=db();if(!base){apply(false,'Sin Firebase de trabajo configurado');return}
   probeBusy=true;try{
-    const controller=new AbortController(),tm=setTimeout(()=>controller.abort(),5500);
-    let r;try{r=await fetch(base+'/ecosystem_connection/latest.json?mxprobe='+Date.now(),{cache:'no-store',signal:controller.signal})}finally{clearTimeout(tm)}
-    // 2xx = lectura efectiva. 401/403 también significan que la ruta de trabajo no es utilizable por el visor y se pinta rojo.
-    apply(!!r.ok,r.ok?'Firebase disponible':'HTTP '+r.status);
-  }catch(e){apply(false,e?.name==='AbortError'?'Tiempo de espera agotado':String(e?.message||e))}finally{probeBusy=false}
+    if(window.mxFixedPrincipalBinding?.connectionState){const st=await window.mxFixedPrincipalBinding.connectionState();apply(!!st.connected,st.reason||'');return;}
+    apply(false,'Vínculo de Sistema Principal no disponible');
+  }catch(e){apply(false,String(e?.message||e))}finally{probeBusy=false}
 }
 function boot(){
   tagRefresh();setTimeout(()=>clickRefresh(true),550);setTimeout(()=>clickRefresh(true),1500);setTimeout(()=>probe(true),350);setTimeout(()=>probe(true),1800);
@@ -2402,7 +2455,16 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   function candidateText(el){return String(el?.textContent||'').replace(/\s+/g,' ').trim()}
   function isLikelyProductElement(el){
     if(!el||badTags.has(el.tagName))return false;
-    if(el.matches?.(selector))return true;
+    const structural=new Set(['HTML','BODY','SECTION','MAIN','NAV','HEADER','FOOTER','FORM','TABLE','TBODY','THEAD','TFOOT','TR','UL','OL','ARTICLE']);
+    if(structural.has(el.tagName))return false;
+    const meta=((el.id||'')+' '+(typeof el.className==='string'?el.className:'')).toLowerCase();
+    if(/(?:^|[\s_-])(productividad|productivity)(?:$|[\s_-])/.test(meta))return false;
+    if(el.classList?.contains('panel')||el.classList?.contains('view'))return false;
+    if(el.matches?.(selector)){
+      /* Nunca comprimir una tarjeta/módulo completo: solo el nodo que realmente contiene el nombre. */
+      if(el.children.length>0 && el.tagName!=='TD' && el.tagName!=='OPTION')return false;
+      return true;
+    }
     if(el.tagName==='TD' && el.children.length===0){
       const t=candidateText(el);return words(t).length>36 && /(?:MG|ML|TABLETA|CAPSULA|SOLUCION|SOLUCIÓN|ENVASE|FRASCO|AMPOLLETA|JARABE|POLVO|CREMA|GEL|BOLSA|CAJA)/i.test(t);
     }
