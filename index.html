@@ -1,38 +1,42 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#061a33">
-<title>MACROXEL · Transferencias</title>
-<style>
-html,body{margin:0;width:100%;height:100%;background:#061a33;color:#fff;font-family:Segoe UI,Arial,sans-serif;overflow:hidden}
-#mxBoot{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:radial-gradient(circle at 50% 42%,#123e70 0,#0a2b50 34%,#061a33 72%);z-index:2147483647}
-.mxM{font-weight:900;font-size:clamp(54px,18vw,116px);letter-spacing:-7px;text-shadow:0 8px 26px #0008}.mxBrand{font-weight:800;font-size:clamp(24px,8vw,46px);letter-spacing:.5px}.mxViewer{font-size:14px;font-weight:700;opacity:.92}.mxState{font-size:11px;opacity:.72}.mxBar{width:min(230px,70vw);height:3px;border-radius:10px;background:#ffffff26;overflow:hidden}.mxBar:before{content:"";display:block;height:100%;width:45%;background:#fff;animation:mxMove 1s ease-in-out infinite alternate}@keyframes mxMove{to{transform:translateX(125%)}}
-</style>
+<title>Macroxel</title>
+<style>html,body{margin:0;width:100%;height:100%;background:#03142b}body{visibility:hidden}</style>
 </head>
 <body>
-<div id="mxBoot"><div class="mxM">M</div><div class="mxBrand">MACROXEL</div><div class="mxViewer">Transferencias</div><div class="mxBar"></div><div class="mxState" id="mxState">Preparando visor…</div></div>
 <script>
-(()=>{'use strict';
-const OWNER='janethzarate86-ux',REPO='TRANSFERENCIAS',BRANCH='main',BASE='1ba3a494be24aad4889926dae21e07f2f2228368',PATCH='.macroxel/release.patch.gz.b64';
-const CK='mx.runtime.gz:'+REPO,MK='mx.runtime.meta:'+REPO;
-const state=t=>{const e=document.getElementById('mxState');if(e)e.textContent=t};
-const timeout=(ms)=>{const c=new AbortController();setTimeout(()=>c.abort(),ms);return c};
-async function fetchText(url,ms=9000){const c=timeout(ms),r=await fetch(url,{cache:'no-store',signal:c.signal});if(!r.ok)throw new Error('HTTP '+r.status);return await r.text()}
-function raw(ref,path){return `https://raw.githubusercontent.com/${OWNER}/${REPO}/${ref}/${path}`}
-function cdn(ref,path){return `https://cdn.jsdelivr.net/gh/${OWNER}/${REPO}@${ref}/${path}`}
-async function remote(ref,path){try{return await fetchText(raw(ref,path))}catch(e){return await fetchText(cdn(ref,path),12000)}}
-async function gunzipB64(s){if(!('DecompressionStream'in window))throw new Error('Navegador sin descompresión gzip');const b=Uint8Array.from(atob(s.replace(/\s+/g,'')),c=>c.charCodeAt(0));const ds=new DecompressionStream('gzip');return await new Response(new Blob([b]).stream().pipeThrough(ds)).text()}
-async function gzipB64(s){if(!('CompressionStream'in window))return null;const cs=new CompressionStream('gzip');const a=new Uint8Array(await new Response(new Blob([s]).stream().pipeThrough(cs)).arrayBuffer());let out='',step=0x8000;for(let i=0;i<a.length;i+=step)out+=String.fromCharCode(...a.subarray(i,i+step));return btoa(out)}
-async function sha256(s){const a=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return [...new Uint8Array(a)].map(x=>x.toString(16).padStart(2,'0')).join('')}
-function applyPatch(source,patch){let src=source.split('\n'),ls=patch.split('\n'),off=0;for(let i=0;i<ls.length;){if(!ls[i].startsWith('@@')){i++;continue}const m=ls[i].match(/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/);if(!m)throw new Error('Parche inválido');const os=+m[1],oc=m[2]===undefined?1:+m[2];i++;const old=[],neu=[];while(i<ls.length&&!ls[i].startsWith('@@')){const l=ls[i];if(l.startsWith('\\ No newline')){i++;continue}const p=l[0],t=l.slice(1);if(p===' '){old.push(t);neu.push(t)}else if(p==='-')old.push(t);else if(p==='+')neu.push(t);else if(l!=='')break;i++}let pos=(oc===0?os:os-1)+off;const ok=p=>old.every((v,j)=>src[p+j]===v);if(old.length&&!ok(pos)){let f=-1;for(let p=Math.max(0,pos-250);p<=Math.min(src.length-old.length,pos+250);p++){if(ok(p)){f=p;break}}if(f<0)for(let p=0;p<=src.length-old.length;p++){if(ok(p)){f=p;break}}if(f<0){const already=neu.length&&(()=>{for(let p=0;p<=src.length-neu.length;p++){if(neu.every((v,j)=>src[p+j]===v))return true}return false})();if(already)continue;throw new Error('La actualización no coincide con la base')}pos=f}src.splice(pos,old.length,...neu);off+=neu.length-old.length}return src.join('\n')}
-function run(html){document.open();document.write(html);document.close()}
-async function cached(){try{const z=localStorage.getItem(CK);return z?await gunzipB64(z):null}catch{return null}}
-async function save(html,hash){try{const z=await gzipB64(html);if(z){localStorage.setItem(CK,z);localStorage.setItem(MK,JSON.stringify({patchHash:hash,at:Date.now()}))}}catch{}}
-(async()=>{let meta={};try{meta=JSON.parse(localStorage.getItem(MK)||'{}')}catch{}let p64,ph;try{state('Comprobando versión…');p64=(await remote(BRANCH,PATCH)).trim();ph=await sha256(p64)}catch(e){const c=await cached();if(c){state('Modo local');return run(c)}state('Sin conexión para iniciar');throw e}
-if(meta.patchHash===ph){const c=await cached();if(c)return run(c)}
-try{state('Actualizando visor…');const [base,patch]=await Promise.all([remote(BASE,'index.html'),gunzipB64(p64)]);const html=applyPatch(base,patch);if(!/<!doctype html/i.test(html)||!html.includes('MACROXEL'))throw new Error('Contenido inválido');await save(html,ph);run(html)}catch(e){console.error('Macroxel loader:',e);const c=await cached();if(c)return run(c);state('No se pudo iniciar · vuelve a intentar con Internet')}})();
+(()=>{
+  const SOURCE='https://raw.githubusercontent.com/janethzarate86-ux/ECOSISTEMA-MACROXEL-HOSPITAL/main/MACROXEL-VISORES-CENTRAL/TRANSFERENCIAS/index.html';
+  const CACHE_KEY=SOURCE;
+  const render=(html)=>{document.open();document.write(html);document.close();};
+  (async()=>{
+    try{
+      const r=await fetch(SOURCE+'?mx='+Date.now(),{cache:'no-store',mode:'cors'});
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      const html=await r.text();
+      if(!html || !/<html[\s>]/i.test(html)) throw new Error('Contenido inválido');
+      if('caches' in window){
+        try{
+          const c=await caches.open('macroxel-hospital-central');
+          await c.put(CACHE_KEY,new Response(html,{headers:{'Content-Type':'text/html; charset=utf-8'}}));
+        }catch(_){ }
+      }
+      render(html);
+    }catch(err){
+      if('caches' in window){
+        try{
+          const cached=await caches.match(CACHE_KEY);
+          if(cached){render(await cached.text());return;}
+        }catch(_){ }
+      }
+      document.body.style.visibility='visible';
+      document.body.innerHTML='<div style="font:600 15px system-ui;color:#fff;text-align:center;padding:28px">No se pudo cargar Macroxel Hospital.<br>Verifica la conexión a Internet.</div>';
+    }
+  })();
 })();
 </script>
-</body></html>
+</body>
+</html>
