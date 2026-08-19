@@ -9,12 +9,12 @@
 <body>
 <script>
 (()=>{
-  const SOURCE='https://raw.githubusercontent.com/janethzarate86-ux/ECOSISTEMA-MACROXEL-HOSPITAL/main/MACROXEL-VISORES-CENTRAL/TRANSFERENCIAS/index.html';
+  const SOURCE=location.origin+'/ECOSISTEMA-MACROXEL-HOSPITAL/MACROXEL-VISORES-CENTRAL/TRANSFERENCIAS/index.html';
   const CACHE_KEY=SOURCE;
   const render=(html)=>{document.open();document.write(html);document.close();};
   (async()=>{
     try{
-      const r=await fetch(SOURCE+'?mx='+Date.now(),{cache:'no-store',mode:'cors'});
+      const r=await fetch(SOURCE+'?mx='+Date.now(),{cache:'no-store'});
       if(!r.ok) throw new Error('HTTP '+r.status);
       const html=await r.text();
       if(!html || !/<html[\s>]/i.test(html)) throw new Error('Contenido inválido');
@@ -22,7 +22,7 @@
         try{
           const c=await caches.open('macroxel-hospital-central');
           await c.put(CACHE_KEY,new Response(html,{headers:{'Content-Type':'text/html; charset=utf-8'}}));
-        }catch(_){ }
+        }catch(_){}
       }
       render(html);
     }catch(err){
@@ -30,7 +30,7 @@
         try{
           const cached=await caches.match(CACHE_KEY);
           if(cached){render(await cached.text());return;}
-        }catch(_){ }
+        }catch(_){}
       }
       document.body.style.visibility='visible';
       document.body.innerHTML='<div style="font:600 15px system-ui;color:#fff;text-align:center;padding:28px">No se pudo cargar Macroxel Hospital.<br>Verifica la conexión a Internet.</div>';
